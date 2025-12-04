@@ -41,22 +41,30 @@ def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
             
     return data[feature_names]
 
+# ไฟล์: app.py
+# แก้ไขในฟังก์ชัน run_prediction
+
 def run_prediction(df: pd.DataFrame) -> pd.DataFrame:
-    """ทำนายผลและจัดกลุ่มความเสี่ยง (ใช้ทั้ง Auto-load และ Upload)"""
     if model is None: return df
     
     processed = preprocess_input(df)
     probs = model.predict_proba(processed)[:, 1]
     df['Probability'] = probs
-    
-    # แบ่ง 4 สีสำหรับหน้า Search และ Dashboard
+
+    limit = df['LIMIT_BAL'] if 'LIMIT_BAL' in df.columns else 1
+    bill = df['BILL_AMT1'] if 'BILL_AMT1' in df.columns else 0
+    df['util_rate'] = (bill / limit).replace([np.inf, -np.inf], 0).fillna(0)
     bins = [-1, 0.2, 0.4, 0.6, 1.1]
-    labels = ['green', 'yellow', 'orange', 'red']
-    df['Risk_Color'] = pd.cut(df['Probability'], bins=bins, labels=labels)
     
-    # แบ่ง 3 ระดับสำหรับ analyze_portfolio เดิม
-    df['Risk_Segment'] = pd.cut(df['Probability'], bins=[-1, 0.2, 0.6, 1.1], 
-                                labels=['Good Payer', 'Medium Risk', 'High Risk'])
+    labels_color = ['red', 'orange', 'yellow', 'green']
+    
+    df['Risk_Color'] = pd.cut(df['Probability'], bins=bins, labels=labels_color)
+    
+    bins_segment = [-1, 0.4, 0.7, 1.1]
+    labels_segment = ['High Risk', 'Medium Risk', 'Good Payer']
+    
+    df['Risk_Segment'] = pd.cut(df['Probability'], bins=bins_segment, labels=labels_segment)
+    
     return df
 
 def analyze_demographics(df):
@@ -210,77 +218,6 @@ async def search_debtors(
         "items": items.to_dict(orient="records")
     }
 
-@app.get("/api/dashboard/stats")
-async def get_dashboard_stats(segment: Optional[str] = "All"):
-    """
-    API สำหรับ Dashboard: ส่งค่า Key Metrics, Demographics, Trends
-    segment: 'High Risk', 'Medium Risk', 'Good Payer', 'All'
-    """
-    if df_global is None:
-        raise HTTPException(status_code=503, detail="Data not available")
-    
-    # 1. Filter Data
-    df = df_global.copy()
-    if segment in ['High Risk', 'Medium Risk', 'Good Payer']:
-        df = df[df['Risk_Segment'] == segment]
-    
-    # 2. Key Metrics (Scorecards)
-    total_debtors = len(df)
-    total_exposure = float(df['BILL_AMT1'].sum())
-    
-    # 3. Trends (Bar Chart: Apr-Sep)
-    months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
-    # เรียงจากเดือนเก่า (6) มาใหม่ (1)
-    bill_cols = ['BILL_AMT6', 'BILL_AMT5', 'BILL_AMT4', 'BILL_AMT3', 'BILL_AMT2', 'BILL_AMT1']
-    pay_cols = ['PAY_AMT6', 'PAY_AMT5', 'PAY_AMT4', 'PAY_AMT3', 'PAY_AMT2', 'PAY_AMT1']
-    
-    trend_bill = [float(df[c].sum()) for c in bill_cols]
-    trend_pay = [float(df[c].sum()) for c in pay_cols]
-    
-    # 4. Demographics (Donut Chart with Toggle)
-    def get_dist(col, mapping=None):
-        s = df[col]
-        if mapping: s = s.map(mapping)
-        counts = s.value_counts()
-        return {"labels": counts.index.tolist(), "data": counts.values.tolist()}
-
-    demographics = {
-        "sex": get_dist('SEX', {1: 'Male', 2: 'Female'}),
-        "education": get_dist('EDUCATION', {1: 'Graduate', 2: 'University', 3: 'High School', 4: 'Others'}),
-        "marriage": get_dist('MARRIAGE', {1: 'Married', 2: 'Single', 3: 'Others'})
-    }
-    
-    # 5. Risk Distribution (สำหรับ Donut Chart ตรงกลาง)
-    # ถ้าเลือก All ให้โชว์สัดส่วนรวม, ถ้าเลือก Filter ให้โชว์สัดส่วนในกลุ่ม (ซึ่งจะเป็น 100%)
-    risk_counts = df['Risk_Segment'].value_counts()
-    risk_dist = {
-        "labels": risk_counts.index.tolist(),
-        "data": risk_counts.values.tolist()
-    }
-    
-    # 6. Insights (Automated Text)
-    # สร้าง Insight ง่ายๆ จากข้อมูล
-    avg_util = df['util_rate'].mean() * 100
-    avg_age = df['AGE'].mean()
-    insights = [
-        f"กลุ่มนี้มีการใช้วงเงินเฉลี่ย {avg_util:.1f}%",
-        f"อายุเฉลี่ยของลูกค้ากลุ่มนี้คือ {avg_age:.0f} ปี",
-        f"ยอดหนี้รวมเดือนล่าสุด: {total_exposure:,.0f} บาท"
-    ]
-    if segment == 'High Risk':
-        insights.append("❗ ข้อแนะนำ: ควรติดตามการชำระหนี้อย่างใกล้ชิด")
-    elif segment == 'Good Payer':
-        insights.append("✅ พฤติกรรม: ชำระหนี้ตรงเวลาอย่างสม่ำเสมอ")
-
-    return {
-        "metrics": {"total_debtors": total_debtors, "total_exposure": total_exposure},
-        "trends": {"months": months, "bill": trend_bill, "pay": trend_pay},
-        "demographics": demographics,
-        "risk_dist": risk_dist,
-        "insights": insights
-    }
-
-
 @app.post("/api/admin/rebuild")
 async def rebuild_data():
     global df_global
@@ -331,3 +268,117 @@ async def analyze_portfolio_endpoint(file: UploadFile = File(...)):
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
 
+@app.get("/api/dashboard/stats")
+async def get_dashboard_stats(segment: Optional[str] = "All"):
+    if df_global is None:
+        raise HTTPException(status_code=503, detail="Data not available")
+    
+    df = df_global.copy()
+    
+    # 1. Metrics (Scorecards)
+    total_debtors = len(df)
+    total_exposure = df['BILL_AMT1'].sum() if 'BILL_AMT1' in df.columns else 0
+    
+    # 2. Risk Distribution (4 สี)
+    risk_labels = ['green', 'yellow', 'orange', 'red']
+    counts = df['Risk_Color'].value_counts().reindex(risk_labels, fill_value=0)
+    risk_dist = {"labels": risk_labels, "data": counts.tolist()}
+    
+    risk_dist = {
+        "labels": risk_labels,
+        "data": counts.tolist()
+    }
+    
+    # 3. Demographics
+    sex_map = {1: 'Male', 2: 'Female'}
+    s_counts = df['SEX'].map(sex_map).fillna('Other').value_counts()
+    demographics = {}
+    demographics['sex'] = {"labels": s_counts.index.tolist(), "data": s_counts.values.tolist()}
+    
+    edu_map = {1: 'Graduate', 2: 'University', 3: 'High School', 4: 'Others'}
+    e_counts = df['EDUCATION'].map(edu_map).fillna('Others').value_counts()
+    demographics['education'] = {"labels": e_counts.index.tolist(), "data": e_counts.values.tolist()}
+    
+    mar_map = {1: 'Married', 2: 'Single', 3: 'Others'}
+    m_counts = df['MARRIAGE'].map(mar_map).fillna('Others').value_counts()
+    demographics['marriage'] = {"labels": m_counts.index.tolist(), "data": m_counts.values.tolist()}
+    
+    #4. Monthly Trends (Apr - Sep) ---
+    # Mapping: 6=Apr, 5=May, ..., 1=Sep
+    months_label = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+    bill_cols = ['BILL_AMT6', 'BILL_AMT5', 'BILL_AMT4', 'BILL_AMT3', 'BILL_AMT2', 'BILL_AMT1']
+    pay_cols = ['PAY_AMT6', 'PAY_AMT5', 'PAY_AMT4', 'PAY_AMT3', 'PAY_AMT2', 'PAY_AMT1']
+    
+    # คำนวณผลรวมแต่ละเดือน
+    trend_bill = [df[c].sum() if c in df.columns else 0 for c in bill_cols]
+    trend_pay = [df[c].sum() if c in df.columns else 0 for c in pay_cols]
+    
+    trends = {
+        "months": months_label,
+        "bill": [float(x) for x in trend_bill],
+        "pay": [float(x) for x in trend_pay]
+    }
+    
+    # 5. Good Payer Insights ---
+    # ดึงข้อมูลเฉพาะกลุ่ม Good Payer (สีเขียว)
+    good_payers = df[df['Risk_Color'] == 'green']
+    if len(good_payers) > 0:
+        gp_count = len(good_payers)
+        gp_avg_limit = good_payers['LIMIT_BAL'].mean()
+        gp_total_pay = good_payers['PAY_AMT1'].sum()
+    else:
+        gp_count = 0
+        gp_avg_limit = 0
+        gp_total_pay = 0
+        
+    good_payer_stats = {
+        "count": int(gp_count),
+        "avg_limit": float(gp_avg_limit),
+        "total_pay_latest": float(gp_total_pay)
+    }
+    # 6 Table Data
+    # ใช้ Risk_Segment ที่แบ่ง 3 ระดับไว้แล้ว
+    # เรียงลำดับ: High Risk, Medium Risk, Good Payer
+    seg_labels = ['High Risk', 'Medium Risk', 'Good Payer']
+    table_data = []
+    
+    for seg in seg_labels:
+        sub_df = df[df['Risk_Segment'] == seg]
+        count = len(sub_df)
+        exposure = sub_df['BILL_AMT1'].sum() if 'BILL_AMT1' in sub_df.columns else 0
+        
+        table_data.append({
+            "segment": seg,
+            "count": count,
+            "exposure": float(exposure)
+        })
+    months_label = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+    bill_cols = ['BILL_AMT6', 'BILL_AMT5', 'BILL_AMT4', 'BILL_AMT3', 'BILL_AMT2', 'BILL_AMT1']
+    pay_cols = ['PAY_AMT6', 'PAY_AMT5', 'PAY_AMT4', 'PAY_AMT3', 'PAY_AMT2', 'PAY_AMT1']
+    trend_bill = [df[c].sum() if c in df.columns else 0 for c in bill_cols]
+    trend_pay = [df[c].sum() if c in df.columns else 0 for c in pay_cols]
+    trends = {"months": months_label, "bill": [float(x) for x in trend_bill], "pay": [float(x) for x in trend_pay]}
+
+    # Demographics
+    sex_map = {1: 'Male', 2: 'Female'}
+    s_counts = df['SEX'].map(sex_map).fillna('Other').value_counts()
+    demographics = {}
+    demographics['sex'] = {"labels": s_counts.index.tolist(), "data": s_counts.values.tolist()}
+    
+    edu_map = {1: 'Graduate', 2: 'University', 3: 'High School', 4: 'Others'}
+    e_counts = df['EDUCATION'].map(edu_map).fillna('Others').value_counts()
+    demographics['education'] = {"labels": e_counts.index.tolist(), "data": e_counts.values.tolist()}
+    
+    mar_map = {1: 'Married', 2: 'Single', 3: 'Others'}
+    m_counts = df['MARRIAGE'].map(mar_map).fillna('Others').value_counts()
+    demographics['marriage'] = {"labels": m_counts.index.tolist(), "data": m_counts.values.tolist()}
+    
+
+    return {
+        "metrics": {"total_debtors": total_debtors, "total_exposure": float(total_exposure)},
+        "risk_dist": risk_dist,
+        "table_data": table_data, # ส่งข้อมูลตารางกลับไป
+        "trends": trends,
+        "demographics": demographics
+    }
+    

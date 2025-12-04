@@ -1,189 +1,330 @@
-const META_URL = '/api/model/meta';
-const SUMMARY_URL = '/api/summary/risk_counts';
+// URL ไปยัง API Dashboard
+const DASHBOARD_URL = '/api/dashboard/stats?segment=All';
 const REBUILD_URL = '/api/admin/rebuild';
-let modelMeta = null;
 
-async function fetchModelMeta() {
-  const badge = document.getElementById('modelBadge');
+// ตัวแปรสำหรับ Demographics Toggle
+let demoData = null;
+let currentDemoIdx = 0;
+const demoKeys = ['sex', 'education', 'marriage'];
+const demoTitles = {
+  sex: 'สัดส่วน: เพศ (Sex)',
+  education: 'สัดส่วน: ระดับการศึกษา',
+  marriage: 'สัดส่วน: สถานะสมรส'
+};
+let demoChartInstance = null;
+let riskChartInstance = null;
+let trendChartInstance = null;
+
+// ฟังก์ชันหลักดึงข้อมูล
+async function fetchDashboardData() {
   try {
-    const res = await fetch(META_URL, { credentials: 'include' });
-    if (!res.ok) throw new Error('meta fetch failed');
+    const res = await fetch(DASHBOARD_URL);
+    if (!res.ok) throw new Error('Failed to fetch data');
     const data = await res.json();
-    modelMeta = data;
-    badge.textContent = `Model: ${data.name} v${data.version}`;
+
+    renderScorecards(data.metrics);
+    renderRiskChart(data.risk_dist, data.metrics.total_debtors);
+    
+    
+    // 1. แสดงตัวเลข Scorecards
+    renderScorecards(data.metrics);
+    
+    // 2. แสดงกราฟวงกลมความเสี่ยง (Risk Chart)
+    // ส่งทั้ง risk_dist และ total_debtors ไปคำนวณ %
+    renderRiskChart(data.risk_dist, data.metrics.total_debtors);
+
+    // --- แสดงตาราง ---
+    renderRiskTable(data.table_data, data.metrics);
+
+    // 3. แสดงกราฟแนวโน้ม (Trend Chart)
+    renderTrendChart(data.trends);
+    
+    // 4. เตรียมข้อมูล Demographics
+    demoData = data.demographics;
+    renderDemoChart(); // Render ครั้งแรก
+
   } catch (e) {
-    modelMeta = null;
-    badge.textContent = 'Model: unknown';
+    console.error(e);
+    // กรณี Error ให้แสดงขีด -
+    if(document.getElementById('metricTotal')) {
+        document.getElementById('metricTotal').textContent = '-';
+    }
   }
 }
 
-function renderPie(byColor) {
-  const canvas = document.getElementById('riskPie');
-  const loading = document.getElementById('chartLoading');
-  loading.style.display = 'none';
-  canvas.style.display = 'block';
 
-  const labels = [
-    RISK_LABELS_FULL.green,
-    RISK_LABELS_FULL.yellow,
-    RISK_LABELS_FULL.orange,
-    RISK_LABELS_FULL.red,
-  ];
-  const data = [
-    byColor.green || 0,
-    byColor.yellow || 0,
-    byColor.orange || 0,
-    byColor.red || 0,
-  ];
-  const colors = [
-    RISK_COLORS.green,
-    RISK_COLORS.yellow,
-    RISK_COLORS.orange,
-    RISK_COLORS.red,
-  ];
+function renderScorecards(metrics) {
+  const elTotal = document.getElementById('metricTotal');
+  const elExposure = document.getElementById('metricExposure');
+  
+  if(elTotal) elTotal.textContent = formatNumber(metrics.total_debtors);
+  if(elExposure) elExposure.textContent = formatNumber(metrics.total_exposure);
+}
 
-  new Chart(canvas, {
-    type: 'pie',
+// --- ส่วนที่แก้ไข: จัดการสี 4 ระดับให้ถูกต้อง ---
+function renderRiskChart(dist, total) {
+  const ctx = document.getElementById('riskDonut');
+  if(!ctx) return; // ป้องกัน Error ถ้าหา Element ไม่เจอ
+
+  const legendContainer = document.getElementById('riskLegend');
+  
+  // ตั้งค่าสีให้ตรงกับ Key ที่ส่งมาจาก app.py ('green', 'yellow', 'orange', 'red')
+  const config = {
+    // แดง: หนักสุด
+    'red':    { label: 'ไม่ชำระ (Red)',    color: '#ef4444' },
+    // ส้ม: รองลงมา (เสี่ยงสูง)
+    'orange': { label: 'เสี่ยงสูง (Orange)',  color: '#f97316' },
+    // เหลือง: เบาลงมา (เริ่มเสี่ยง)
+    'yellow': { label: 'เริ่มมีความเสี่ยง (Yellow)', color: '#eab308' },
+    // เขียว: ดีที่สุด
+    'green':  { label: 'ชำระปกติ (Green)', color: '#22c55e' }
+  };
+  
+  // ข้อมูลจาก API (dist.labels จะเป็น ['green', 'yellow', ...])
+  const apiLabels = dist.labels; 
+  const values = dist.data;
+  
+  const chartLabels = apiLabels.map(k => config[k]?.label || k);
+  const chartColors = apiLabels.map(k => config[k]?.color || '#ccc');
+
+  if (riskChartInstance) riskChartInstance.destroy();
+  
+  riskChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
     data: {
-      labels,
-      datasets: [{ data, backgroundColor: colors }],
+      labels: chartLabels,
+      datasets: [{
+        data: values,
+        backgroundColor: chartColors,
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
     },
     options: {
+      cutout: '65%',
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#0f172a' } },
-      },
+        legend: { display: false }, // ซ่อน Legend ของ Chart.js (เราสร้างเอง)
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const val = context.raw;
+              const pct = total ? ((val / total) * 100).toFixed(1) : 0;
+              return ` ${context.label}: ${formatNumber(val)} ราย (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // สร้าง Legend ด้านขวาเอง
+  if(legendContainer) {
+      legendContainer.innerHTML = apiLabels.map((key, i) => {
+        const val = values[i];
+        const pct = total ? ((val / total) * 100).toFixed(1) : 0;
+        const item = config[key] || { label: key, color: '#ccc' };
+        
+        return `
+          <div class="legend-item">
+            <span class="dot" style="background:${item.color}"></span>
+            <div class="legend-text">
+              <div class="legend-title">${item.label}</div>
+              <div class="legend-val">${formatNumber(val)} ราย (${pct}%)</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+  }
+}
+
+function renderDemoChart() {
+  if (!demoData) return;
+  const ctx = document.getElementById('demoDonut');
+  if(!ctx) return;
+  
+  const key = demoKeys[currentDemoIdx];
+  const info = demoData[key]; // { labels: [], data: [] }
+  
+  // อัปเดตหัวข้อกราฟขวา
+  const titleEl = document.getElementById('demoTitle');
+  if(titleEl) titleEl.textContent = demoTitles[key];
+
+  if (demoChartInstance) demoChartInstance.destroy();
+
+  demoChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: info.labels,
+      datasets: [{
+        data: info.data,
+        backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#64748b'],
+        borderWidth: 0
+      }]
     },
+    options: {
+      cutout: '60%',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { 
+            position: 'bottom', 
+            labels: { boxWidth: 10, usePointStyle: true, padding: 15 } 
+        }
+      }
+    }
   });
 }
 
-function renderSummaryList(total, byColor) {
-  const list = document.getElementById('summaryList');
-  const items = [
-    { key: 'green', name: RISK_LABELS_FULL.green },
-    { key: 'yellow', name: RISK_LABELS_FULL.yellow },
-    { key: 'orange', name: RISK_LABELS_FULL.orange },
-    { key: 'red', name: RISK_LABELS_FULL.red },
-  ];
-  list.innerHTML = items.map(({ key, name }) => {
-    const count = byColor[key] || 0;
-    const pct = total ? (count / total) : 0;
+// ฟังก์ชันวาดกราฟแท่ง
+function renderTrendChart(trends) {
+  const ctx = document.getElementById('trendBarChart');
+  if(!ctx) return;
+  
+  if (trendChartInstance) trendChartInstance.destroy();
+  
+  trendChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: trends.months, // ['Apr', 'May', ...]
+      datasets: [
+        {
+          label: 'ยอดหนี้ (Bill)',
+          data: trends.bill,
+          backgroundColor: '#94a3b8', // สีเทา
+          borderRadius: 4,
+          barPercentage: 0.6,
+          categoryPercentage: 0.8
+        },
+        {
+          label: 'ยอดชำระ (Pay)',
+          data: trends.pay,
+          backgroundColor: '#22c55e', // สีเขียว
+          borderRadius: 4,
+          barPercentage: 0.6,
+          categoryPercentage: 0.8
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }, // เราสร้าง Legend เองแล้ว
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              return ` ${context.dataset.label}: ${formatNumber(context.raw)} บาท`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { borderDash: [2, 4], color: '#f1f5f9' },
+          ticks: { callback: (val) => formatNumber(val, 0, true) } // ย่อตัวเลข เช่น 1M
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// ฟังก์ชันสร้างตาราง
+function renderRiskTable(tableData, metrics) {
+  const tbody = document.getElementById('riskTableBody');
+  const tfoot = document.getElementById('riskTableFoot');
+  if(!tbody) return;
+
+  const totalExposure = metrics.total_exposure || 1;
+  const totalDebtors = metrics.total_debtors || 1;
+
+  // Map ชื่อภาษาอังกฤษเป็นไทย
+  const nameMap = {
+    'High Risk': 'ความเสี่ยงสูง',
+    'Medium Risk': 'ความเสี่ยงกลาง',
+    'Good Payer': 'ความเสี่ยงต่ำ'
+  };
+
+  // สร้าง Rows
+  tbody.innerHTML = tableData.map(item => {
+    const pctExposure = (item.exposure / totalExposure) * 100;
+    const pctCount = (item.count / totalDebtors) * 100;
+    const thName = nameMap[item.segment] || item.segment;
+    
+    // กำหนดสีตัวอักษรตามความเสี่ยง
+    let colorClass = '';
+    if(item.segment === 'High Risk') colorClass = 'text-danger';
+    else if(item.segment === 'Medium Risk') colorClass = 'text-warning';
+    else colorClass = 'text-success';
+
     return `
-      <div class="summary-item">
-        <div class="summary-left">
-          ${riskBadgeHTML(key)}
-          <strong>${name}</strong>
-        </div>
-        <div class="summary-right">
-          <span class="summary-count">${formatNumber(count)}</span>
-          <span class="summary-pct" style="margin-left:8px;color:#9ca3af">${formatPercent(pct)}</span>
-        </div>
-      </div>
+      <tr>
+        <td class="${colorClass} fw-bold">${thName}</td>
+        <td class="text-end">${formatNumber(item.exposure)}</td>
+        <td class="text-end">${pctExposure.toFixed(2)}%</td>
+        <td class="text-end">${pctCount.toFixed(2)}%</td>
+      </tr>
     `;
   }).join('');
+
+  // สร้าง Footer (ยอดรวม)
+  tfoot.innerHTML = `
+    <tr>
+      <td>รวม</td>
+      <td class="text-end">${formatNumber(totalExposure)}</td>
+      <td class="text-end">100.00%</td>
+      <td class="text-end">100.00%</td>
+    </tr>
+  `;
 }
 
-async function fetchSummary() {
-  const kpiTotal = document.getElementById('kpiTotal');
-  const kpiRed = document.getElementById('kpiRed');
-  const kpiGreen = document.getElementById('kpiGreen');
-  const kpiYellow = document.getElementById('kpiYellow');
-  const kpiOrange = document.getElementById('kpiOrange');
-  const banner = document.getElementById('summaryError');
-  const canvas = document.getElementById('riskPie');
-  const loading = document.getElementById('chartLoading');
-  try {
-    const res = await fetch(SUMMARY_URL, { credentials: 'include' });
-    if (!res.ok) throw new Error('summary fetch failed');
-    const data = await res.json();
-    const { total, by_color: byColor } = data;
 
-    kpiTotal.textContent = formatNumber(total);
 
-    if (kpiRed) kpiRed.textContent = formatNumber(byColor.red || 0);
-    if (kpiGreen) kpiGreen.textContent = formatNumber(byColor.green || 0);
-    if (kpiYellow) kpiYellow.textContent = formatNumber(byColor.yellow || 0);
-    if (kpiOrange) kpiOrange.textContent = formatNumber(byColor.orange || 0);
+// ปุ่มควบคุม Demographics (< >)
+const btnPrev = document.getElementById('demoPrev');
+const btnNext = document.getElementById('demoNext');
 
-    renderPie(byColor);
-    renderSummaryList(total, byColor);
-    banner.style.display = 'none';
-  } catch (e) {
-    banner.style.display = 'block';
-    loading.style.display = 'none';
-    canvas.style.display = 'none';
-    document.getElementById('summaryList').innerHTML = '';
-    kpiTotal.textContent = '-';
-    if (kpiRed) kpiRed.textContent = '-';
-    if (kpiGreen) kpiGreen.textContent = '-';
-    if (kpiYellow) kpiYellow.textContent = '-';
-    if (kpiOrange) kpiOrange.textContent = '-';
-  }
+if(btnPrev) {
+    btnPrev.addEventListener('click', () => {
+      currentDemoIdx = (currentDemoIdx - 1 + demoKeys.length) % demoKeys.length;
+      renderDemoChart();
+    });
+}
+if(btnNext) {
+    btnNext.addEventListener('click', () => {
+      currentDemoIdx = (currentDemoIdx + 1) % demoKeys.length;
+      renderDemoChart();
+    });
 }
 
-async function triggerRebuild() {
-  const refreshBtn = document.getElementById('refreshBtn');
-  const originalText = refreshBtn.textContent;
-  refreshBtn.textContent = 'กำลังอัปเดต...';
-  refreshBtn.disabled = true;
+// เริ่มต้นทำงาน
+document.addEventListener('DOMContentLoaded', () => {
+  fetchDashboardData();
   
-  try {
-    const res = await fetch(REBUILD_URL, { method: 'POST', credentials: 'include' });
-    const data = await res.json();
-    
-    if (data.success) {
-      // Refresh the data after successful rebuild
-      await fetchSummary();
-      refreshBtn.textContent = 'อัปเดตสำเร็จ!';
-      setTimeout(() => {
+  // ปุ่ม Refresh อัปเดตข้อมูล
+  const refreshBtn = document.getElementById('refreshBtn');
+  if(refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true; 
+        const originalText = refreshBtn.textContent;
+        refreshBtn.textContent = 'Updating...';
+        
+        try {
+            await fetch(REBUILD_URL, { method: 'POST' });
+            await fetchDashboardData();
+        } catch(e) {
+            console.error(e);
+        }
+        
         refreshBtn.textContent = originalText;
         refreshBtn.disabled = false;
-      }, 2000);
-    } else {
-      throw new Error(data.message || 'Rebuild failed');
-    }
-  } catch (e) {
-    console.error('Rebuild failed:', e);
-    refreshBtn.textContent = 'อัปเดตล้มเหลว';
-    setTimeout(() => {
-      refreshBtn.textContent = originalText;
-      refreshBtn.disabled = false;
-    }, 2000);
+      });
   }
-}
-
-function init() {
-  fetchModelMeta();
-  fetchSummary();
-  setupModelModal();
-  
-  // Setup refresh button
-  const refreshBtn = document.getElementById('refreshBtn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', triggerRebuild);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', init);
-
-function setupModelModal() {
-  const openBtn = document.getElementById('openModelBtn');
-  const backdrop = document.getElementById('modelModal');
-  const closeBtn = document.getElementById('closeModelBtn');
-  const closeBtn2 = document.getElementById('closeModelBtn2');
-  const nameEl = document.getElementById('modalModelName');
-  const verEl = document.getElementById('modalModelVersion');
-
-  function open() {
-    backdrop.style.display = 'flex';
-    nameEl.textContent = modelMeta?.name ?? 'unknown';
-    verEl.textContent = modelMeta?.version ?? '-';
-  }
-  function close() { backdrop.style.display = 'none'; }
-
-  openBtn?.addEventListener('click', open);
-  closeBtn?.addEventListener('click', close);
-  closeBtn2?.addEventListener('click', close);
-  backdrop?.addEventListener('click', (e) => {
-    if (e.target === backdrop) close();
-  });
-}
+});

@@ -85,3 +85,281 @@ input, select { background: var(--card); border: 1px solid var(--border); color:
 .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
 .close-btn { background: #64748b; border: none; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 .open-btn { background: #e2e8f0; border: 1px solid var(--border); color: #0f172a; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+
+/* เพิ่มในไฟล์ assets/css/styles.css */
+
+.dashboard-container {
+  max-width: 1400px; /* ขยายให้กว้างขึ้น */
+}
+
+.dashboard-row {
+  display: flex;       
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dashboard-col {
+  flex: 1;
+  min-width: 300px;
+}
+
+.col-scorecards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 0.8; /* เล็กกว่าส่วนกราฟหน่อย */
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+
+/* KPI Card Style */
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+}
+.kpi-icon {
+  width: 50px;
+  height: 50px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.kpi-content h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.kpi-sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Chart Card Style */
+.chart-card {
+  height: 100%;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.chart-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.chart-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chart-body.row-layout {
+  flex-direction: row; /* กราฟซ้าย Legend ขวา */
+  gap: 10px;
+}
+.chart-wrapper-sm {
+  width: 180px;
+  height: 180px;
+  position: relative;
+}
+
+/* Custom Legend */
+.chart-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+}
+.legend-item .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+.legend-title {
+  font-weight: 600;
+  color: #334155;
+}
+.legend-val {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Nav Buttons (< >) */
+.nav-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+.nav-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Insights List */
+.insights-list {
+  list-style: none;
+  padding: 0;
+}
+.insights-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #475569;
+}
+.insights-list li:last-child {
+  border-bottom: none;
+}
+
+/* Layout Columns */
+.col-risk-info { 
+  flex: 3;           
+  min-width: 250px;
+}
+.col-trend-chart { 
+  flex: 7;            
+  min-width: 400px;
+}
+.h-100 {
+  height: 100%;
+}
+
+/* Risk Tabs Style */
+.risk-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.risk-tab {
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.risk-high { background-color: #fef2f2; color: #ef4444; border-left: 4px solid #ef4444; }
+.risk-medium { background-color: #fefce8; color: #eab308; border-left: 4px solid #eab308; }
+.risk-low { background-color: #f0fdf4; color: #22c55e; border-left: 4px solid #22c55e; }
+.risk-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+/* Insights List */
+.good-payer-insight {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+}
+.insight-title {
+  font-size: 14px;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.insight-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.insight-list li {
+  font-size: 13px;
+  color: #475569;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.insight-list li:last-child { border-bottom: none; }
+.insight-list .val-green { color: #22c55e; font-weight: 700; }
+.insight-list .sub-text { font-size: 12px; color: #94a3b8; margin-left: 5px; }
+.insight-list .suggestion { margin-top: 8px; color: #64748b; font-size: 12px; line-height: 1.4; }
+
+.w-100 {
+  width: 100% !important;
+}
+/* Chart Area */
+.chart-wrapper-wide {
+  width: 100%;
+  position: relative;
+}
+.chart-legend-top {
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+  color: #64748b;
+}
+.legend-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 4px; }
+.box-bill { background: #94a3b8; }
+.box-pay { background: #22c55e; }
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0;
+}
+
+.risk-table th {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 16px;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: left;
+}
+
+.risk-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #334155;
+}
+
+.risk-table .text-end { text-align: right; }
+.risk-table .text-center { text-align: center; }
+.risk-table .fw-bold { font-weight: 600; }
+.risk-table .text-danger { color: #ef4444; }
+.risk-table .text-warning { color: #d97706; }
+.risk-table .text-success { color: #22c55e; }
+
+.card.p-0 { padding: 0 !important; }
+.card-header { border-bottom: 1px solid #f1f5f9; }
+

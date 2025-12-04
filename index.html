@@ -10,75 +10,130 @@
   <body>
     <header class="app-header">
       <div class="container header-inner">
-        <h1 class="app-title">ภาพรวมความเสี่ยงเครดิต</h1>
+        <h1 class="app-title">Credit Risk Dashboard</h1>
         <div class="header-right">
           <button id="refreshBtn" class="btn">อัปเดตข้อมูล</button>
-          <button class="btn" onclick="location.href='search.html'">ไปหน้า Search</button>
-          <button id="openModelBtn" class="open-btn" aria-label="ข้อมูลโมเดล">ข้อมูลโมเดล</button>
-          <span id="modelBadge" class="badge">Model: unknown</span>
+          <button class="btn" onclick="location.href='search.html'">ค้นหาลูกหนี้</button>
         </div>
       </div>
     </header>
 
-    <main class="container">
-      <section class="kpi-grid kpi-grid-top">
-        <div class="kpi-card">
-          <div class="kpi-title">ลูกหนี้ทั้งหมด</div>
-          <div id="kpiTotal" class="kpi-value">กำลังโหลด…</div>
-        </div> 
+    <main class="container dashboard-container">
+      
+      <section class="dashboard-row">
+        
+        <div class="dashboard-col col-scorecards">
+          <div class="card kpi-card">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-content">
+              <h3>ลูกหนี้ทั้งหมด</h3>
+              <div id="metricTotal" class="kpi-value">-</div>
+              <div class="kpi-sub">ราย</div>
+            </div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-content">
+              <h3>ยอดหนี้คงค้างรวม</h3>
+              <div id="metricExposure" class="kpi-value">-</div>
+              <div class="kpi-sub">บาท</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-col col-chart">
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>สัดส่วนความเสี่ยง</h3>
+            </div>
+            <div class="chart-body row-layout">
+              <div class="chart-wrapper-sm">
+                <canvas id="riskDonut"></canvas>
+              </div>
+              <div id="riskLegend" class="chart-legend-list">
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-col col-chart">
+          <div class="card chart-card">
+            <div class="chart-header with-controls">
+              <button class="nav-btn" id="demoPrev">❮</button>
+              <h3 id="demoTitle">เพศ (Sex)</h3>
+              <button class="nav-btn" id="demoNext">❯</button>
+            </div>
+            <div class="chart-body">
+              <div class="chart-wrapper-sm">
+                <canvas id="demoDonut"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-title">ชำระตรงเวลาตลอด</div>
-          <div id="kpiGreen" class="kpi-value">กำลังโหลด…</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">เริ่มมีความเสี่ยง</div>
-          <div id="kpiYellow" class="kpi-value">กำลังโหลด…</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">มีความเสี่ยงสูง</div>
-          <div id="kpiOrange" class="kpi-value">กำลังโหลด…</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">ไม่ชำระแน่นอน</div>
-          <div id="kpiRed" class="kpi-value">กำลังโหลด…</div>
-        </div>
-      </section>
-
-      <section id="summaryError" class="banner banner-error" style="display:none;">
-        ไม่สามารถดึงสรุปความเสี่ยงได้
-      </section>
-
-      <section class="chart-section">
-        <h2 class="section-title">สัดส่วนความเสี่ยง</h2>
-        <div id="chartContainer" class="chart-container">
-          <div id="chartLoading" class="loading">กำลังโหลด…</div>
-          <canvas id="riskPie" width="400" height="400" style="display:none;"></canvas>
-        </div>
-        <div id="summaryList" class="summary-list">
-          <!-- Filled by JS -->
-        </div>
-      </section>
-    </main>
-
-    <!-- Model Info Modal -->
-    <div id="modelModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modelTitle">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 id="modelTitle" class="modal-title">ข้อมูลโมเดล</h3>
-          <button id="closeModelBtn" class="close-btn" aria-label="ปิด">ปิด</button>
-        </div>
-        <div class="modal-body">
-          <p><strong>ชื่อโมเดล:</strong> <span id="modalModelName">unknown</span></p>
-          <p><strong>เวอร์ชัน:</strong> <span id="modalModelVersion">-</span></p>
-        </div>
-        <div class="modal-footer">
-          <button id="closeModelBtn2" class="close-btn">ปิด</button>
+      <section class="dashboard-row mt-4">
+      
+      <div class="dashboard-col col-risk-info">
+        <div class="card h-100 p-4">
+          <h3 class="card-title mb-3">ระดับความเสี่ยง</h3>
+          <div class="risk-tabs">
+            <div class="risk-tab risk-high">
+              <span class="dot"></span> ความเสี่ยงสูง (High)
+            </div>
+            <div class="risk-tab risk-medium">
+              <span class="dot"></span> ความเสี่ยงปานกลาง (Medium)
+            </div>
+            <div class="risk-tab risk-low">
+              <span class="dot"></span> ความเสี่ยงต่ำ (Low)
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div class="dashboard-col col-trend-chart"> <div class="card h-100 p-0"> <div class="card-header p-4 pb-2">
+            <h3>รายละเอียดแบ่งตามกลุ่มความเสี่ยง</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table risk-table">
+              <thead>
+                <tr>
+                  <th>ประเภท</th>
+                  <th class="text-end">จำนวนเงิน</th>
+                  <th class="text-end">เปอร์เซ็น % (ยอดหนี้)</th>
+                  <th class="text-end">ร้อยละ (จำนวนราย)</th>
+                </tr>
+              </thead>
+              <tbody id="riskTableBody">
+                <tr><td colspan="4" class="text-center">กำลังโหลด...</td></tr>
+              </tbody>
+              <tfoot id="riskTableFoot" class="table-light fw-bold">
+                </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="dashboard-row mt-4">
+      <div class="card chart-card" style="width: 100%; flex: 1;">
+        <div class="chart-header">
+          <h3>แนวโน้มการชำระหนี้ (เม.ย. - ก.ย.)</h3>
+          <div class="chart-legend-top">
+            <span class="legend-box box-bill"></span> ยอดหนี้
+            <span class="legend-box box-pay"></span> ยอดชำระ
+          </div>
+        </div>
+        <div class="chart-body">
+          <div class="chart-wrapper-wide" style="height: 350px; width: 100%;">
+            <canvas id="trendBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    </main>
 
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/index.js"></script>

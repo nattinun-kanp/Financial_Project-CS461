@@ -171,10 +171,12 @@ function updateControlsSummary() {
   const riskText = state.risk ? RISK_BADGE_TH[state.risk] : 'ทุกสี';
   const queryText = state.query ? state.query : '-';
   let sortText = 'ID น้อย→มาก';
+  
   switch (state.sort) {
     case 'ID.desc': sortText = 'ID มาก→น้อย'; break;
-    case 'prob.desc': sortText = 'ความเสี่ยงสูง→ต่ำ'; break;
-    case 'prob.asc': sortText = 'ความเสี่ยงต่ำ→สูง'; break;
+    case 'prob.asc': sortText = 'ความเสี่ยงสูง→ต่ำ'; break;
+    case 'prob.desc': sortText = 'ความเสี่ยงต่ำ→สูง'; break;
   }
+  
   els.controlsSummary.textContent = `กรอง: ${riskText} • เรียง: ${sortText} • แถว/หน้า: ${formatNumber(state.pageSize)} • ค้นหา: ${queryText} • รวม: ${formatNumber(state.total)}`;
 }
