@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ค้นหาลูกหนี้</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container header-inner">
+        <h1 class="app-title">ค้นหาลูกหนี้</h1>
+        <div class="header-right">
+          <button class="btn" onclick="location.href='/'">กลับหน้าแรก</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="searchError" class="banner banner-error" style="display:none;">
+        ค้นหาขณะนี้ใช้งานไม่ได้
+      </section>
+
+      <section class="search-bar">
+        <div class="field">
+          <label for="queryInput">ค้นหา ID</label>
+          <input id="queryInput" type="text" placeholder="พิมพ์เลขหรือตัวอักษร" />
+        </div>
+        <div class="field">
+          <label for="riskSelect">กรองสี</label>
+          <select id="riskSelect">
+            <option value="all">All</option>
+            <option value="green">Green</option>
+            <option value="yellow">Yellow</option>
+            <option value="orange">Orange</option>
+            <option value="red">Red</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sortSelect">เรียงตาม</label>
+          <select id="sortSelect">
+            <option value="ID.asc">ID น้อย→มาก</option>
+            <option value="ID.desc">ID มาก→น้อย</option>
+            <option value="prob.desc">ความเสี่ยงสูง→ต่ำ</option>
+            <option value="prob.asc">ความเสี่ยงต่ำ→สูง</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pageSizeSelect">แถว/หน้า</label>
+          <select id="pageSizeSelect">
+            <option value="50" selected>50</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <button id="clearBtn" class="btn">Clear</button>
+      </section>
+
+      <div id="controlsSummary" class="controls-summary"></div>
+
+      <section class="table-section">
+        <div id="loadingTable" class="loading">กำลังโหลด…</div>
+        <div id="emptyState" class="empty" style="display:none;">ไม่พบลูกหนี้ที่ตรงเงื่อนไข</div>
+
+        <div class="table-scroll">
+          <table class="data-table" id="debtorsTable" style="display:none;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Risk</th>
+                <th>prob</th>
+                <th>LIMIT_BAL</th>
+                <th>AGE</th>
+                <th>SEX (ไทย)</th>
+                <th>EDUCATION (ไทย)</th>
+                <th>MARRIAGE</th>
+                <th>PAY_0</th>
+                <th>BILL_AMT1</th>
+                <th>PAY_AMT1</th>
+                <th>default_label</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div id="rangeInfo" class="range-info"></div>
+          <div class="pagination">
+            <button id="prevBtn" class="btn">Prev</button>
+            <span id="pageInfo"></span>
+            <button id="nextBtn" class="btn">Next</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/search.js"></script>
+  </body>
+  </html>

@@ -1,0 +1,31 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packages
+*.egg-info/
+dist/
+build/
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# Environment files
+.env
+
+# Jupyter
+.ipynb_checkpoints
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
+
+# Model / large files (ignore if you add them intentionally elsewhere)
+*.joblib
+*.pkl
+*.h5

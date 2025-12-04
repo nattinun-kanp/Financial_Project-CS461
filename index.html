@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ภาพรวมความเสี่ยงเครดิต</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container header-inner">
+        <h1 class="app-title">ภาพรวมความเสี่ยงเครดิต</h1>
+        <div class="header-right">
+          <button id="refreshBtn" class="btn">อัปเดตข้อมูล</button>
+          <button class="btn" onclick="location.href='search.html'">ไปหน้า Search</button>
+          <button id="openModelBtn" class="open-btn" aria-label="ข้อมูลโมเดล">ข้อมูลโมเดล</button>
+          <span id="modelBadge" class="badge">Model: unknown</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="kpi-grid kpi-grid-top">
+        <div class="kpi-card">
+          <div class="kpi-title">ลูกหนี้ทั้งหมด</div>
+          <div id="kpiTotal" class="kpi-value">กำลังโหลด…</div>
+        </div> 
+      </section>
+
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">ชำระตรงเวลาตลอด</div>
+          <div id="kpiGreen" class="kpi-value">กำลังโหลด…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">เริ่มมีความเสี่ยง</div>
+          <div id="kpiYellow" class="kpi-value">กำลังโหลด…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">มีความเสี่ยงสูง</div>
+          <div id="kpiOrange" class="kpi-value">กำลังโหลด…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">ไม่ชำระแน่นอน</div>
+          <div id="kpiRed" class="kpi-value">กำลังโหลด…</div>
+        </div>
+      </section>
+
+      <section id="summaryError" class="banner banner-error" style="display:none;">
+        ไม่สามารถดึงสรุปความเสี่ยงได้
+      </section>
+
+      <section class="chart-section">
+        <h2 class="section-title">สัดส่วนความเสี่ยง</h2>
+        <div id="chartContainer" class="chart-container">
+          <div id="chartLoading" class="loading">กำลังโหลด…</div>
+          <canvas id="riskPie" width="400" height="400" style="display:none;"></canvas>
+        </div>
+        <div id="summaryList" class="summary-list">
+          <!-- Filled by JS -->
+        </div>
+      </section>
+    </main>
+
+    <!-- Model Info Modal -->
+    <div id="modelModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modelTitle">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modelTitle" class="modal-title">ข้อมูลโมเดล</h3>
+          <button id="closeModelBtn" class="close-btn" aria-label="ปิด">ปิด</button>
+        </div>
+        <div class="modal-body">
+          <p><strong>ชื่อโมเดล:</strong> <span id="modalModelName">unknown</span></p>
+          <p><strong>เวอร์ชัน:</strong> <span id="modalModelVersion">-</span></p>
+        </div>
+        <div class="modal-footer">
+          <button id="closeModelBtn2" class="close-btn">ปิด</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/index.js"></script>
+  </body>
+</html>
